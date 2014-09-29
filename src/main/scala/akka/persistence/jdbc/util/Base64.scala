@@ -39,19 +39,3 @@ object Base64 {
   /** Decodes the given Base64-ByteArray into a ByteArray. **/
   def decodeBinary(in: Array[Byte]): Array[Byte] = (new B64).decode(in)
 }
-
-trait EncodeDecode {
-  def serialization: Serialization
-
-  object Journal {
-    def toBytes(msg: PersistentRepr): Array[Byte] = serialization.serialize(msg).get
-
-    def fromBytes(bytes: Array[Byte]): PersistentRepr = serialization.deserialize(bytes, classOf[PersistentRepr]).get
-  }
-
-  object Snapshot {
-    def toBytes(msg: Snapshot): Array[Byte] = serialization.serialize(msg).get
-
-    def fromBytes(bytes: Array[Byte]): Snapshot = serialization.deserialize(bytes, classOf[Snapshot]).get
-  }
-}

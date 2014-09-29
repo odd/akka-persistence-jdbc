@@ -27,6 +27,9 @@ class PluginConfig(system: ActorSystem) {
   def journalTableName = config.getString("journalTableName")
   def snapshotSchemaName: String = config.getString("snapshotSchemaName").toOption.map(_ + ".").getOrElse("")
   def snapshotTableName = config.getString("snapshotTableName")
+  def messageFormat = config.getString("messageFormat").toOption.getOrElse("base64")
+  def jsonFormat = "json".equalsIgnoreCase(messageFormat)
+  def base64Format = "base64".equalsIgnoreCase(messageFormat)
 }
 
 trait ActorConfig { this: Actor =>

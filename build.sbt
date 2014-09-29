@@ -4,7 +4,7 @@ seq(bintraySettings:_*)
 
 organization := "com.github.dnvriend"
 
-name := "akka-persistence-jdbc"
+name := "akka-persistence-jdbc-json"
 
 version := "1.0.8"
 
@@ -21,6 +21,8 @@ libraryDependencies ++= {
     "com.typesafe.akka"   %% "akka-persistence-experimental" % akkaVersion,
     "commons-codec"        % "commons-codec"                 % "1.9",
     "org.scalikejdbc"     %% "scalikejdbc"                   % "2.1.2",
+    "org.json4s"          %% "json4s-native"                 % "3.2.10",
+    "org.json4s"          %% "json4s-ext"                    % "3.2.10",
     "ch.qos.logback"       % "logback-classic"               % "1.1.2"           % "test",
     "com.typesafe.akka"   %% "akka-slf4j"                    % akkaVersion       % "test",
     "ch.qos.logback"       % "logback-classic"               % "1.1.2"           % "test",
