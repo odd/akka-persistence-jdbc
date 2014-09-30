@@ -1,9 +1,20 @@
 package akka.persistence.jdbc.util
 
-import akka.persistence.PersistentRepr
+import java.util.concurrent.TimeUnit
+
+import akka.actor.{ActorNotFound, ActorSystem, ActorRef}
+import akka.persistence.{PersistentImpl, PersistentRepr}
 import akka.persistence.jdbc.common.PluginConfig
 import akka.persistence.serialization.Snapshot
 import akka.serialization.Serialization
+import akka.serialization.Serialization
+import akka.util.Timeout
+import org.json4s.JsonAST.JString
+import org.json4s.native.Serialization
+import org.json4s.{CustomSerializer, FullTypeHints}
+
+import scala.concurrent.{Future, Await}
+import scala.concurrent.duration.FiniteDuration
 
 trait EncodeDecode {
   def serialization: Serialization
@@ -12,7 +23,7 @@ trait EncodeDecode {
   object Journal extends JournalProvider {
     private[this] val underlying: JournalProvider = {
       if (cfg.base64Format) new Base64JournalProvider
-      else if (cfg.jsonFormat) new JsonJournalProvider
+      else if (cfg.jsonFormat) new JsonJournalProvider(serialization.system)
       else throw new IllegalStateException("Message format undefined")
     }
 
@@ -69,16 +80,34 @@ trait EncodeDecode {
     def fromString(str: String): Snapshot = fromBytes(Base64.decodeBinary(str))
   }
 
-  class JsonJournalProvider extends JournalProvider {
+  class AutoFullTypeHints extends FullTypeHints(Nil) {
+    override def containsHint(clazz: Class[_]): Boolean = classOf[Product].isAssignableFrom(clazz)
+  }
+
+  private val timeout = Timeout(10, TimeUnit.SECONDS).duration
+
+  class ActorRefSerializer(system: ActorSystem) extends CustomSerializer[ActorRef]({ formats => ({
+      /*
+      case JString(address) => Await.result(system.actorSelection(address).resolveOne(timeout).recoverWith {
+        case t: ActorNotFound => Future.successful(ActorRef.noSender)
+      }(system.dispatcher), timeout)
+      */
+      case JString(address) => system.actorFor(address)
+    }, {
+      case ref: ActorRef => JString(ref.path.toSerializationFormat)
+     })
+  })
+
+  class JsonJournalProvider(system: ActorSystem) extends JournalProvider {
     import org.json4s._
     import org.json4s.native.Serialization
     import org.json4s.native.Serialization.{read, write}
-    implicit val formats = Serialization.formats(NoTypeHints)
+    implicit val formats = Serialization.formats(new AutoFullTypeHints) + new ActorRefSerializer(system)
 
     def toString(msg: PersistentRepr): String = write(msg)
     def toBytes(msg: PersistentRepr): Array[Byte] = toString(msg).getBytes("UTF-8")
 
-    def fromString(str: String): PersistentRepr = read(str)
+    def fromString(str: String): PersistentRepr = read[PersistentImpl](str)
     def fromBytes(bytes: Array[Byte]): PersistentRepr = fromString(new String(bytes, "UTF-8"))
   }
 
