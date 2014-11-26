@@ -8,9 +8,9 @@ name := "akka-persistence-jdbc-json"
 
 version := "1.0.8"
 
-scalaVersion := "2.11.2"
+scalaVersion := "2.11.4"
 
-crossScalaVersions := Seq("2.10.4", "2.11.2")
+crossScalaVersions := Seq("2.10.4", "2.11.4")
 
 resolvers += "krasserm at bintray" at "http://dl.bintray.com/krasserm/maven"
 
@@ -21,8 +21,10 @@ libraryDependencies ++= {
     "com.typesafe.akka"   %% "akka-persistence-experimental" % akkaVersion,
     "commons-codec"        % "commons-codec"                 % "1.9",
     "org.scalikejdbc"     %% "scalikejdbc"                   % "2.1.2",
-    "org.json4s"          %% "json4s-native"                 % "3.2.10",
-    "org.json4s"          %% "json4s-ext"                    % "3.2.10",
+    //"org.json4s"          %% "json4s-native"                 % "3.2.10",
+    //"org.json4s"          %% "json4s-ext"                    % "3.2.10",
+    "net.liftweb"         %% "lift-json"                    % "2.6-RC2" withSources,
+    "net.liftweb"         %% "lift-json-ext"                % "2.6-RC2" withSources,
     "ch.qos.logback"       % "logback-classic"               % "1.1.2"           % "test",
     "com.typesafe.akka"   %% "akka-slf4j"                    % akkaVersion       % "test",
     "ch.qos.logback"       % "logback-classic"               % "1.1.2"           % "test",

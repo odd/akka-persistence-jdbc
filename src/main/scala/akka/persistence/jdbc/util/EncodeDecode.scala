@@ -7,11 +7,12 @@ import akka.persistence.{PersistentImpl, PersistentRepr}
 import akka.persistence.jdbc.common.PluginConfig
 import akka.persistence.serialization.Snapshot
 import akka.serialization.Serialization
-import akka.serialization.Serialization
 import akka.util.Timeout
-import org.json4s.JsonAST.JString
-import org.json4s.native.Serialization
-import org.json4s.{CustomSerializer, FullTypeHints}
+//import org.json4s.JsonAST.JString
+//import org.json4s.native.Serialization
+//import org.json4s.{CustomSerializer, FullTypeHints}
+import net.liftweb.json.JsonAST.JString
+import net.liftweb.json.{Serialization => JsonSerialization, CustomSerializer, FullTypeHints}
 
 import scala.concurrent.{Future, Await}
 import scala.concurrent.duration.FiniteDuration
@@ -37,7 +38,7 @@ trait EncodeDecode {
   object Snapshot extends SnapshotProvider {
     private[this] val underlying: SnapshotProvider = {
       if (cfg.base64Format) new Base64SnapshotProvider
-      else if (cfg.jsonFormat) new JsonSnapshotProvider
+      else if (cfg.jsonFormat) new JsonSnapshotProvider(serialization.system)
       else throw new IllegalStateException("Message format undefined")
     }
 
@@ -80,9 +81,11 @@ trait EncodeDecode {
     def fromString(str: String): Snapshot = fromBytes(Base64.decodeBinary(str))
   }
 
+  /*
   class AutoFullTypeHints extends FullTypeHints(Nil) {
-    override def containsHint(clazz: Class[_]): Boolean = classOf[Product].isAssignableFrom(clazz)
+    override def containsHint_?(clazz: Class[_]): Boolean = classOf[Product].isAssignableFrom(clazz)
   }
+  */
 
   private val timeout = Timeout(10, TimeUnit.SECONDS).duration
 
@@ -97,29 +100,36 @@ trait EncodeDecode {
       case ref: ActorRef => JString(ref.path.toSerializationFormat)
      })
   })
-
-  class JsonJournalProvider(system: ActorSystem) extends JournalProvider {
-    import org.json4s._
-    import org.json4s.native.Serialization
-    import org.json4s.native.Serialization.{read, write}
-    implicit val formats = Serialization.formats(new AutoFullTypeHints) + new ActorRefSerializer(system)
-
-    def toString(msg: PersistentRepr): String = write(msg)
-    def toBytes(msg: PersistentRepr): Array[Byte] = toString(msg).getBytes("UTF-8")
-
-    def fromString(str: String): PersistentRepr = read[PersistentImpl](str)
-    def fromBytes(bytes: Array[Byte]): PersistentRepr = fromString(new String(bytes, "UTF-8"))
+  
+  trait JsonCapable[Repr <: AnyRef] {
+    def system: ActorSystem
+    implicit def manifest: Manifest[Repr]
+    implicit val formats = JsonSerialization.formats(FullTypeHints(List(classOf[Any]))) + new ActorRefSerializer(system)
+    def toString(msg: Repr): String = JsonSerialization.write(msg)
+    def toBytes(msg: Repr): Array[Byte] = toString(msg).getBytes("UTF-8")
+    def fromString(str: String): Repr = JsonSerialization.read[Repr](str)
+    def fromBytes(bytes: Array[Byte]): Repr = fromString(new String(bytes, "UTF-8"))
   }
 
-  class JsonSnapshotProvider extends SnapshotProvider {
-    import org.json4s._
-    import org.json4s.native.Serialization
-    import org.json4s.native.Serialization.{read, write}
-    implicit val formats = Serialization.formats(NoTypeHints)
+  class JsonJournalProvider(val system: ActorSystem) extends JournalProvider with JsonCapable[PersistentRepr] {
+    override implicit def manifest = Manifest.classType[PersistentRepr](classOf[PersistentRepr])
+  }
+  /*{
+     def toString(msg: PersistentRepr): String = JsonSerialization.write(msg)
+    def toBytes(msg: PersistentRepr): Array[Byte] = toString(msg).getBytes("UTF-8")
+    def fromString(str: String): PersistentRepr = JsonSerialization.read[PersistentImpl](str)
+    def fromBytes(bytes: Array[Byte]): PersistentRepr = fromString(new String(bytes, "UTF-8"))
+  }
+ */
+
+  class JsonSnapshotProvider(val system: ActorSystem) extends SnapshotProvider with JsonCapable[Snapshot] {
+    override implicit def manifest = Manifest.classType[Snapshot](classOf[Snapshot])
+  }
+  /*{
     def toString(msg: Snapshot): String = write(msg)
     def toBytes(msg: Snapshot): Array[Byte] = toString(msg).getBytes("UTF-8")
-
     def fromString(str: String): Snapshot = read(str)
     def fromBytes(bytes: Array[Byte]): Snapshot = fromString(new String(bytes, "UTF-8"))
   }
+  */
 }
