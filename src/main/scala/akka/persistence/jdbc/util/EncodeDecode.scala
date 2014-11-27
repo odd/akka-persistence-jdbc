@@ -112,7 +112,7 @@ trait EncodeDecode {
   }
 
   class JsonJournalProvider(val system: ActorSystem) extends JournalProvider with JsonCapable[PersistentRepr] {
-    override implicit def manifest = Manifest.classType[PersistentRepr](classOf[PersistentRepr])
+    override implicit def manifest = Manifest.classType[PersistentRepr](classOf[PersistentImpl])
   }
   /*{
      def toString(msg: PersistentRepr): String = JsonSerialization.write(msg)
