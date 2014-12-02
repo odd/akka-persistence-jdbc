@@ -8,11 +8,13 @@ import akka.persistence.jdbc.common.PluginConfig
 import akka.persistence.serialization.Snapshot
 import akka.serialization.Serialization
 import akka.util.Timeout
+import net.liftweb.json.ext.JodaTimeSerializers
+
 //import org.json4s.JsonAST.JString
 //import org.json4s.native.Serialization
 //import org.json4s.{CustomSerializer, FullTypeHints}
 import net.liftweb.json.JsonAST.JString
-import net.liftweb.json.{Serialization => JsonSerialization, CustomSerializer, FullTypeHints}
+import net.liftweb.json.{Serialization => JsonSerialization, DefaultFormats, Formats, CustomSerializer, FullTypeHints}
 
 import scala.concurrent.{Future, Await}
 import scala.concurrent.duration.FiniteDuration
@@ -104,7 +106,13 @@ trait EncodeDecode {
   trait JsonCapable[Repr <: AnyRef] {
     def system: ActorSystem
     implicit def manifest: Manifest[Repr]
-    implicit val formats = JsonSerialization.formats(FullTypeHints(List(classOf[Any]))) + new ActorRefSerializer(system)
+    implicit val formats = new Formats {
+      override val typeHintFieldName: String = "@class"
+      val dateFormat = DefaultFormats.lossless.dateFormat
+        override val typeHints = new FullTypeHints(List(classOf[Any]))
+      } +
+      new ActorRefSerializer(system) ++
+      JodaTimeSerializers.all
     def toString(msg: Repr): String = JsonSerialization.write(msg)
     def toBytes(msg: Repr): Array[Byte] = toString(msg).getBytes("UTF-8")
     def fromString(str: String): Repr = JsonSerialization.read[Repr](str)
