@@ -8,7 +8,11 @@ import akka.persistence.jdbc.common.PluginConfig
 import akka.persistence.serialization.Snapshot
 import akka.serialization.Serialization
 import akka.util.Timeout
+import net.liftweb.json.CustomSerializer
+import net.liftweb.json.JsonAST.JString
+import net.liftweb.json._
 import net.liftweb.json.ext.JodaTimeSerializers
+import org.joda.time.{DateTime, LocalDateTime}
 
 //import org.json4s.JsonAST.JString
 //import org.json4s.native.Serialization
@@ -103,15 +107,26 @@ trait EncodeDecode {
      })
   })
   
+  case object LocalDateTimeSerializer extends CustomSerializer[LocalDateTime](format => (
+    {
+      case JString(s) => new DateTime(s).toLocalDateTime
+      case JNull => null
+    },
+    {
+      case d: LocalDateTime => JString(format.dateFormat.format(d.toDate))
+    }
+  ))
+
   trait JsonCapable[Repr <: AnyRef] {
     def system: ActorSystem
     implicit def manifest: Manifest[Repr]
-    implicit val formats = new Formats {
+    implicit val formats = (new Formats {
       override val typeHintFieldName: String = "@class"
       val dateFormat = DefaultFormats.lossless.dateFormat
         override val typeHints = new FullTypeHints(List(classOf[Any]))
       } +
-      new ActorRefSerializer(system) ++
+      new ActorRefSerializer(system) +
+      LocalDateTimeSerializer) ++
       JodaTimeSerializers.all
     def toString(msg: Repr): String = JsonSerialization.write(msg)
     def toBytes(msg: Repr): Array[Byte] = toString(msg).getBytes("UTF-8")
