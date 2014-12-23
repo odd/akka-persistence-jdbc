@@ -29,6 +29,7 @@ class PluginConfig(system: ActorSystem) {
   def snapshotTableName = config.getString("snapshotTableName")
   def messageFormat = config.getString("messageFormat").toOption.getOrElse("base64")
   def jsonFormat = "json".equalsIgnoreCase(messageFormat)
+  def rawFormat = "raw".equalsIgnoreCase(messageFormat)
   def base64Format = "base64".equalsIgnoreCase(messageFormat)
 }
 

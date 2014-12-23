@@ -31,13 +31,10 @@ trait EncodeDecode {
     private[this] val underlying: JournalProvider = {
       if (cfg.base64Format) new Base64JournalProvider
       else if (cfg.jsonFormat) new JsonJournalProvider(serialization.system)
+      else if (cfg.rawFormat) new RawJournalProvider
       else throw new IllegalStateException("Message format undefined")
     }
-
-    def toBytes(msg: PersistentRepr): Array[Byte] = underlying.toBytes(msg)
     def toString(msg: PersistentRepr): String = underlying.toString(msg)
-
-    def fromBytes(bytes: Array[Byte]): PersistentRepr = underlying.fromBytes(bytes)
     def fromString(str: String): PersistentRepr = underlying.fromString(str)
   }
 
@@ -47,28 +44,28 @@ trait EncodeDecode {
       else if (cfg.jsonFormat) new JsonSnapshotProvider(serialization.system)
       else throw new IllegalStateException("Message format undefined")
     }
-
-    def toBytes(msg: Snapshot): Array[Byte] = underlying.toBytes(msg)
     def toString(msg: Snapshot): String = underlying.toString(msg)
-
-    def fromBytes(bytes: Array[Byte]): Snapshot = underlying.fromBytes(bytes)
     def fromString(str: String): Snapshot = underlying.fromString(str)
   }
 
   trait JournalProvider {
-    def toBytes(msg: PersistentRepr): Array[Byte]
     def toString(msg: PersistentRepr): String
-
-    def fromBytes(bytes: Array[Byte]): PersistentRepr
     def fromString(str: String): PersistentRepr
   }
 
   trait SnapshotProvider {
-    def toBytes(msg: Snapshot): Array[Byte]
     def toString(msg: Snapshot): String
-
-    def fromBytes(bytes: Array[Byte]): Snapshot
     def fromString(str: String): Snapshot
+  }
+
+  class RawJournalProvider extends JournalProvider {
+    def toString(msg: PersistentRepr): String = new String(serialization.serialize(msg).get, "UTF-8")
+    def fromString(str: String): PersistentRepr = serialization.deserialize(str.getBytes("UTF-8"), classOf[PersistentRepr]).get
+  }
+
+  class RawSnapshotProvider extends SnapshotProvider {
+    def toString(msg: Snapshot): String = new String(serialization.serialize(msg).get, "UTF-8")
+    def fromString(str: String): Snapshot = serialization.deserialize(str.getBytes("UTF-8"), classOf[Snapshot]).get
   }
 
   class Base64JournalProvider extends JournalProvider {
